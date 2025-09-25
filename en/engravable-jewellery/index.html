@@ -1,6 +1,48 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
+ <script id="gh-path-patch">
+(function(){
+  var host = window.location.host;
+  var pathParts = window.location.pathname.split('/').filter(Boolean);
+  var basePath = '/';
+  if (host.endsWith('github.io') && pathParts.length > 0) {
+    basePath = '/' + pathParts[0] + '/';
+  }
+  function rewrite(url){
+    if (typeof url === 'string' && url.charAt(0) === '/' && !url.startsWith('//')) {
+      if (basePath !== '/' && !url.startsWith(basePath)) {
+        return basePath + url.slice(1);
+      }
+    }
+    return url;
+  }
+  var origFetch = window.fetch;
+  if (origFetch) {
+    window.fetch = function(input, init){
+      if (typeof input === 'string') {
+        input = rewrite(input);
+      } else if (input && typeof input.url === 'string') {
+        var newUrl = rewrite(input.url);
+        if (newUrl !== input.url) {
+          input = new Request(newUrl, input);
+        }
+      }
+      return origFetch.call(this, input, init);
+    };
+  }
+  if (window.XMLHttpRequest) {
+    var origOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url){
+      if (typeof url === 'string') {
+        arguments[1] = rewrite(url);
+      }
+      return origOpen.apply(this, arguments);
+    };
+  }
+})();
+</script>
+
 <meta charset=UTF-8>
 
 <meta http-equiv="x-ua-compatible" content="ie=edge">
