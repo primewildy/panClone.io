@@ -3,733 +3,181 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pandora Moments | Shorts Showcase</title>
-  <meta name="description" content="Watch the latest Pandora YouTube Shorts without leaving the sparkle of our world." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Work+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <title>Pandora Shorts Loop</title>
+  <meta name="description" content="Continuous loop of Pandora YouTube Shorts." />
   <style>
     :root {
       color-scheme: light;
       --rose: #f7f0f7;
       --rose-soft: #fdf7fb;
-      --rose-deep: #f1e0eb;
-      --ink: #1a1a1a;
-      --ink-soft: #3c3c3c;
-      --accent: #d681a3;
-      --accent-strong: #b35784;
-      --grid-gap: clamp(1rem, 2vw, 1.75rem);
+      --shadow: rgba(0, 0, 0, 0.18);
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
     body {
+      height: 100%;
       margin: 0;
-      font-family: "Work Sans", "Gotham", "Helvetica Neue", Arial, sans-serif;
-      background: var(--rose);
-      color: var(--ink);
-      text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
+      padding: 0;
     }
 
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .page-shell {
-      min-height: 100vh;
+    body {
       display: flex;
-      flex-direction: column;
-    }
-
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(12px);
-      background: rgba(247, 240, 247, 0.9);
-      border-bottom: 1px solid rgba(198, 156, 178, 0.25);
-    }
-
-    .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.2rem clamp(1.25rem, 4vw, 3rem);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 2rem;
-      text-transform: uppercase;
-      letter-spacing: 0.22em;
-      font-size: 0.85rem;
-    }
-
-    .brand {
-      font-family: "Playfair Display", Georgia, serif;
-      font-weight: 600;
-      letter-spacing: 0.35em;
-      font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      font-size: 0.8rem;
-    }
-
-    .nav-links a {
-      position: relative;
-      padding-bottom: 0.4rem;
-    }
-
-    .nav-links a::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: 100%;
-      height: 1px;
-      background: var(--ink);
-      transform-origin: center;
-      transform: scaleX(0);
-      transition: transform 200ms ease;
-    }
-
-    .nav-links a:focus-visible,
-    .nav-links a:hover {
-      color: var(--accent-strong);
-    }
-
-    .nav-links a:focus-visible::after,
-    .nav-links a:hover::after {
-      transform: scaleX(1);
-    }
-
-    main {
-      flex: 1 1 auto;
-    }
-
-    .hero {
-      padding: clamp(3rem, 8vw, 6rem) clamp(1.5rem, 6vw, 4rem);
-      background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.9), transparent 55%),
-        radial-gradient(circle at 80% 15%, rgba(214, 129, 163, 0.2), transparent 50%),
-        linear-gradient(120deg, var(--rose-soft), var(--rose));
-    }
-
-    .hero-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: clamp(2rem, 5vw, 4rem);
-      align-items: center;
-    }
-
-    .hero-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    .kicker {
-      text-transform: uppercase;
-      letter-spacing: 0.24em;
-      font-size: 0.8rem;
-      color: var(--accent-strong);
-    }
-
-    .hero-title {
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: clamp(2.5rem, 6vw, 3.5rem);
-      letter-spacing: 0.04em;
-      margin: 0;
-    }
-
-    .hero-description {
-      font-size: 1.05rem;
-      line-height: 1.6;
-      color: var(--ink-soft);
-      max-width: 32ch;
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .btn {
-      display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0.85rem 1.8rem;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      background: var(--ink);
-      color: #fff;
-      font-size: 0.9rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
-    }
-
-    .btn.secondary {
-      background: transparent;
-      color: var(--ink);
-      border-color: rgba(26, 26, 26, 0.18);
-    }
-
-    .btn:hover,
-    .btn:focus-visible {
-      background: var(--accent-strong);
-      border-color: transparent;
-      color: #fff;
-    }
-
-    .btn.secondary:hover,
-    .btn.secondary:focus-visible {
-      background: var(--ink);
-      color: #fff;
-    }
-
-    .hero-art {
-      position: relative;
-      width: min(480px, 100%);
-      margin: 0 auto;
-      aspect-ratio: 1;
-      border-radius: 32px;
-      background: linear-gradient(135deg, rgba(214, 129, 163, 0.45), rgba(255, 255, 255, 0.85));
-      box-shadow: 0 40px 90px rgba(179, 87, 132, 0.25);
-      display: grid;
-      place-items: center;
+      background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.75), transparent 55%),
+        radial-gradient(circle at 85% 15%, rgba(214, 129, 163, 0.25), transparent 50%),
+        linear-gradient(135deg, var(--rose-soft), var(--rose));
+      font-family: sans-serif;
       overflow: hidden;
     }
 
-    .hero-art::before,
-    .hero-art::after {
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.45);
-      filter: blur(0.5px);
-    }
-
-    .hero-art::before {
-      width: 60%;
-      height: 60%;
-      top: 8%;
-      right: 4%;
-    }
-
-    .hero-art::after {
-      width: 45%;
-      height: 45%;
-      bottom: 6%;
-      left: 8%;
-    }
-
-    .hero-art-title {
-      position: relative;
-      z-index: 1;
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: clamp(1.6rem, 4vw, 2.4rem);
-      text-align: center;
-      letter-spacing: 0.3em;
-      color: var(--ink);
-      text-transform: uppercase;
-    }
-
-    .shorts-section {
-      padding: clamp(3rem, 8vw, 5rem) clamp(1.5rem, 6vw, 4rem) 6rem;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), transparent 60%), var(--rose);
-    }
-
-    .section-header {
-      max-width: 1200px;
-      margin: 0 auto clamp(2rem, 5vw, 3.5rem);
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .section-title {
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: clamp(2rem, 4.5vw, 2.8rem);
-      letter-spacing: 0.05em;
-      margin: 0;
-    }
-
-    .section-description {
-      font-size: 1.05rem;
-      color: var(--ink-soft);
-      max-width: 55ch;
-      line-height: 1.6;
-    }
-
-    .shorts-grid {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      gap: var(--grid-gap);
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    }
-
-    .short-card {
-      position: relative;
-      border-radius: 24px;
-      overflow: hidden;
-      background: var(--rose-deep);
-      min-height: 340px;
-      box-shadow: 0 16px 40px rgba(26, 26, 26, 0.08);
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      cursor: pointer;
-      transition: transform 180ms ease, box-shadow 180ms ease;
-      isolation: isolate;
-    }
-
-    .short-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: var(--rose-deep) center / cover no-repeat;
-      background-image: var(--thumb, none);
-      filter: saturate(1.15);
-      transform: scale(1.02);
-      transition: transform 220ms ease;
-      z-index: -2;
-    }
-
-    .short-card::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.0) 40%, rgba(0, 0, 0, 0.6) 100%);
-      z-index: -1;
-      opacity: 0.95;
-      transition: opacity 220ms ease;
-    }
-
-    .short-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 24px 45px rgba(26, 26, 26, 0.15);
-    }
-
-    .short-card:hover::before {
-      transform: scale(1.08);
-    }
-
-    .short-card:hover::after {
-      opacity: 0.75;
-    }
-
-    .short-card.is-loading {
-      background: linear-gradient(120deg, rgba(241, 224, 235, 0.6), rgba(255, 255, 255, 0.9), rgba(241, 224, 235, 0.6));
-      background-size: 200% 200%;
-      animation: shimmer 1.6s ease-in-out infinite;
-      box-shadow: none;
-      cursor: default;
-    }
-
-    .short-card.is-loading::before,
-    .short-card.is-loading::after {
-      display: none;
-    }
-
-    @keyframes shimmer {
-      0% {
-        background-position: 200% 0;
-      }
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    .short-meta {
-      padding: 1.75rem;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .short-meta h3 {
-      margin: 0;
-      font-size: 1.05rem;
-      line-height: 1.45;
-      letter-spacing: 0.02em;
-      font-weight: 500;
-    }
-
-    .watch-pill {
-      align-self: flex-start;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.45rem 1rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-    }
-
-    .watch-pill svg {
-      width: 1rem;
-      height: 1rem;
-      fill: currentColor;
-    }
-
-    .empty-state {
-      grid-column: 1 / -1;
-      padding: 3rem;
-      border-radius: 24px;
-      background: rgba(241, 224, 235, 0.65);
-      text-align: center;
-      color: var(--ink-soft);
-      letter-spacing: 0.05em;
-    }
-
-    .site-footer {
-      padding: 2.5rem clamp(1.5rem, 6vw, 4rem);
-      background: #fff;
-      border-top: 1px solid rgba(198, 156, 178, 0.2);
-      font-size: 0.85rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ink-soft);
-    }
-
-    .footer-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem 2.5rem;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .player-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(26, 26, 26, 0.55);
-      backdrop-filter: blur(12px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(1rem, 5vw, 3rem);
-      z-index: 40;
-      transition: opacity 200ms ease;
-    }
-
-    .player-overlay.is-visible {
-      display: flex;
-    }
-
-    .player-surface {
-      position: relative;
-      width: min(800px, 100%);
+    .player-shell {
+      width: min(520px, 90vw);
       aspect-ratio: 9 / 16;
-      border-radius: 24px;
+      border-radius: 32px;
       overflow: hidden;
+      box-shadow: 0 32px 70px var(--shadow);
       background: #000;
-      box-shadow: 0 30px 60px rgba(26, 26, 26, 0.35);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: stretch;
+      position: relative;
+    }
+
+    .player-shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.02);
+      pointer-events: none;
     }
 
     .player-frame {
       width: 100%;
       height: 100%;
       border: 0;
+      display: block;
     }
 
-    .player-close {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      border: none;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      width: 38px;
-      height: 38px;
-      border-radius: 999px;
-      display: inline-flex;
+    .loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      transition: background 160ms ease;
+      background: transparent;
+      z-index: 2;
+      pointer-events: none;
     }
 
-    .player-close:hover,
-    .player-close:focus-visible {
-      background: rgba(214, 129, 163, 0.85);
+    .loading::after {
+      content: "";
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 3px solid rgba(214, 129, 163, 0.25);
+      border-top-color: rgba(179, 87, 132, 0.9);
+      animation: spin 1s linear infinite;
     }
 
-    .player-fallback {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      padding: 0.55rem 1.1rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
+    .loading.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 280ms ease;
     }
 
-    @media (max-width: 640px) {
-      .header-inner {
-        flex-direction: column;
-        gap: 0.75rem;
-        align-items: flex-start;
-      }
-
-      .nav-links {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .hero-art {
-        border-radius: 24px;
-      }
-
-      .short-card {
-        min-height: 300px;
+    @keyframes spin {
+      to {
+        transform: rotate(1turn);
       }
     }
   </style>
 </head>
 <body>
-  <div class="page-shell">
-    <header class="site-header">
-      <div class="header-inner">
-        <div class="brand">Pandora</div>
-        <nav class="nav-links" aria-label="Secondary navigation">
-          <a href="/">Shop</a>
-          <a href="#shorts">Stories</a>
-          <a href="#">Gifting</a>
-        </nav>
-      </div>
-    </header>
-
-    <main>
-      <section class="hero">
-        <div class="hero-inner">
-          <div class="hero-copy">
-            <span class="kicker">Moments in motion</span>
-            <h1 class="hero-title">Discover Pandora Shorts</h1>
-            <p class="hero-description">
-              A curated feed of sparkle, styling and behind-the-scenes inspiration. Dive into the latest Pandora YouTube Shorts without leaving the enchanting universe of our brand.
-            </p>
-            <div class="hero-actions">
-              <a class="btn" href="#shorts">Watch now</a>
-              <a class="btn secondary" href="https://www.youtube.com/@TheOfficialPandora/shorts" target="_blank" rel="noopener">Open on YouTube</a>
-            </div>
-          </div>
-          <div class="hero-art" role="presentation">
-            <div class="hero-art-title">Shorts</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="shorts-section" id="shorts">
-        <div class="section-header">
-          <h2 class="section-title">Latest From Pandora</h2>
-          <p class="section-description">
-            Press play on pieces that shine. Scroll through our freshest Shorts and enjoy a runway of charms, stacks and styling moments brought to life in seconds.
-          </p>
-        </div>
-        <div class="shorts-grid" id="shortsGrid" aria-live="polite"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <span>&copy; Pandora A/S</span>
-        <span>Crafted for inspiration only</span>
-      </div>
-    </footer>
+  <div class="loading" id="loadingIndicator" aria-hidden="true"></div>
+  <div class="player-shell">
+    <object
+      id="shortsPlayer"
+      class="player-frame"
+      type="text/html"
+      data=""
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share">
+      <param name="allowfullscreen" value="true" />
+    </object>
   </div>
-
-  <div class="player-overlay" id="playerOverlay" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="player-surface">
-      <button class="player-close" type="button" aria-label="Close video">
-        &#215;
-      </button>
-      <div class="player-stage" id="playerStage"></div>
-      <a class="player-fallback" id="playerFallback" href="#" target="_blank" rel="noopener">Open on YouTube</a>
-    </div>
-  </div>
-
-  <template id="shortCardTemplate">
-    <article class="short-card" tabindex="0" role="button" aria-label="Play Pandora Short">
-      <div class="short-meta">
-        <div class="watch-pill">
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <path d="M10 0C4.486 0 0 4.486 0 10s4.486 10 10 10 10-4.486 10-10S15.514 0 10 0zm3.293 10.707l-4 4A.997.997 0 0 1 8 14V6a.997.997 0 0 1 1.707-.707l4 4a.999.999 0 0 1 0 1.414z"></path>
-          </svg>
-          Watch now
-        </div>
-        <h3></h3>
-      </div>
-    </article>
-  </template>
 
   <script>
     (function () {
-      const shortsGrid = document.getElementById('shortsGrid');
-      const template = document.getElementById('shortCardTemplate');
-      const overlay = document.getElementById('playerOverlay');
-      const playerStage = document.getElementById('playerStage');
-      const closeButton = overlay.querySelector('.player-close');
-      const fallbackLink = document.getElementById('playerFallback');
+      const SOURCE = 'https://r.jina.ai/https://www.youtube.com/@TheOfficialPandora/shorts';
+      const player = document.getElementById('shortsPlayer');
+      const loader = document.getElementById('loadingIndicator');
 
-      const SHORT_SOURCE = 'https://r.jina.ai/https://www.youtube.com/@TheOfficialPandora/shorts';
-      let activeShort = null;
+      function hideLoader() {
+        loader.classList.add('is-hidden');
+      }
 
-      function renderSkeleton(count = 6) {
-        const fragment = document.createDocumentFragment();
-        for (let i = 0; i < count; i += 1) {
-          const skeleton = document.createElement('div');
-          skeleton.className = 'short-card is-loading';
-          fragment.appendChild(skeleton);
+      function buildEmbedUrl(ids) {
+        if (!ids.length) {
+          return '';
         }
-        shortsGrid.innerHTML = '';
-        shortsGrid.appendChild(fragment);
-      }
-
-      function clearStage() {
-        playerStage.innerHTML = '';
-        activeShort = null;
-      }
-
-      function closeOverlay() {
-        overlay.classList.remove('is-visible');
-        overlay.setAttribute('aria-hidden', 'true');
-        clearStage();
-      }
-
-      function openOverlay(short) {
-        if (!short) return;
-        overlay.classList.add('is-visible');
-        overlay.setAttribute('aria-hidden', 'false');
-        fallbackLink.href = `https://www.youtube.com/shorts/${short.id}`;
-
-        const player = document.createElement('object');
-        player.className = 'player-frame';
-        player.setAttribute('type', 'text/html');
-        player.setAttribute('data', `https://www.youtube.com/embed/${short.id}?autoplay=1&playsinline=1&modestbranding=1&rel=0`);
-        player.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
-
-        const allowFullScreen = document.createElement('param');
-        allowFullScreen.setAttribute('name', 'allowfullscreen');
-        allowFullScreen.setAttribute('value', 'true');
-        player.appendChild(allowFullScreen);
-
-        clearStage();
-        playerStage.appendChild(player);
-        activeShort = short;
-      }
-
-      function createCard(short) {
-        const clone = template.content.firstElementChild.cloneNode(true);
-        const titleEl = clone.querySelector('h3');
-        clone.style.setProperty('--thumb', `url("https://img.youtube.com/vi/${short.id}/hqdefault.jpg")`);
-        clone.dataset.videoId = short.id;
-        clone.dataset.title = short.title;
-        titleEl.textContent = short.title;
-        const activate = () => openOverlay(short);
-        clone.addEventListener('click', activate);
-        clone.addEventListener('keyup', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            activate();
-          }
+        const [first, ...rest] = ids;
+        const params = new URLSearchParams({
+          autoplay: '1',
+          playsinline: '1',
+          rel: '0',
+          modestbranding: '1',
+          controls: '0',
+          enablejsapi: '1',
+          mute: '1',
         });
-        return clone;
+        const playlistIds = rest.length ? ids : [first];
+        params.set('playlist', playlistIds.join(','));
+        params.set('loop', '1');
+        params.set('origin', window.location.origin);
+        return `https://www.youtube.com/embed/${first}?${params.toString()}`;
       }
 
       async function loadShorts() {
-        renderSkeleton();
         try {
-          const response = await fetch(SHORT_SOURCE);
+          const response = await fetch(SOURCE);
           if (!response.ok) {
-            throw new Error(`Unable to fetch Shorts (${response.status})`);
+            throw new Error(`Failed to fetch shorts (${response.status})`);
           }
 
           const text = await response.text();
           const lines = text.split('\n');
+          const ids = [];
           const seen = new Set();
-          const shorts = [];
 
           for (const line of lines) {
             if (!line.startsWith('### [')) continue;
-            const idMatch = line.match(/https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/);
-            if (!idMatch) continue;
-            const id = idMatch[1];
+            const match = line.match(/https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/);
+            if (!match) continue;
+            const id = match[1];
             if (seen.has(id)) continue;
             seen.add(id);
-            const titleMatch = line.match(/### \[(.*?)\]/);
-            const title = titleMatch ? titleMatch[1] : 'Pandora Short';
-            shorts.push({ id, title });
-            if (shorts.length >= 12) break;
+            ids.push(id);
+            if (ids.length >= 15) break;
           }
 
-          shortsGrid.innerHTML = '';
-
-          if (!shorts.length) {
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
-            empty.textContent = 'We could not load Pandora Shorts right now. Please try again later.';
-            shortsGrid.appendChild(empty);
-            return;
+          if (!ids.length) {
+            throw new Error('No shorts found');
           }
 
-          const fragment = document.createDocumentFragment();
-          shorts.forEach((short) => fragment.appendChild(createCard(short)));
-          shortsGrid.appendChild(fragment);
+          const embedUrl = buildEmbedUrl(ids);
+          if (!embedUrl) {
+            throw new Error('Unable to resolve embed URL');
+          }
+
+          player.setAttribute('data', embedUrl);
+          player.addEventListener('load', hideLoader, { once: true });
+          window.setTimeout(hideLoader, 4000);
         } catch (error) {
           console.error(error);
-          shortsGrid.innerHTML = '';
-          const empty = document.createElement('div');
-          empty.className = 'empty-state';
-          empty.innerHTML = 'Something sparkly went wrong. <a href="https://www.youtube.com/@TheOfficialPandora/shorts" target="_blank" rel="noopener">Open our Shorts on YouTube</a> while we fix it.';
-          shortsGrid.appendChild(empty);
+          hideLoader();
         }
       }
-
-      overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-          closeOverlay();
-        }
-      });
-
-      closeButton.addEventListener('click', () => {
-        closeOverlay();
-      });
-
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && overlay.classList.contains('is-visible')) {
-          closeOverlay();
-        }
-      });
-
-      window.addEventListener('pageshow', () => {
-        if (!shortsGrid.children.length) {
-          loadShorts();
-        }
-      });
 
       loadShorts();
     })();
