@@ -1,0 +1,18 @@
+{
+    "name": "Pandora web",
+    "short_name": "Pandora web",
+    "start_url": "/?homescreen=1",
+    "background_color": "#fff",
+    "theme_color": "#ffcad4",
+    "display": "standalone",
+    "icons": [
+        {
+            "src": "./img/global/app-icon-196.png",
+            "sizes": "196x196"
+        },
+        {
+            "src": "./img/global/app-icon-512.png",
+            "sizes": "512x512"
+        }
+    ]
+}
