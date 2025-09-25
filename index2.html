@@ -110,9 +110,14 @@
       const SOURCE = 'https://r.jina.ai/https://www.youtube.com/@TheOfficialPandora/shorts';
       const player = document.getElementById('shortsPlayer');
       const loader = document.getElementById('loadingIndicator');
+      let playlistUrl = '';
 
       function hideLoader() {
         loader.classList.add('is-hidden');
+      }
+
+      function showLoader() {
+        loader.classList.remove('is-hidden');
       }
 
       function buildEmbedUrl(ids) {
@@ -134,6 +139,33 @@
         params.set('loop', '1');
         params.set('origin', window.location.origin);
         return `https://www.youtube.com/embed/${first}?${params.toString()}`;
+      }
+
+      function withReloadParam(url) {
+        try {
+          const parsed = new URL(url);
+          parsed.searchParams.set('reload', Date.now().toString(36));
+          return parsed.toString();
+        } catch (error) {
+          return url;
+        }
+      }
+
+      function applySource(url, options = {}) {
+        if (!url) return;
+        const { force = false } = options;
+        const finalUrl = force ? withReloadParam(url) : url;
+        showLoader();
+        player.dataset.state = 'loading';
+        player.dataset.currentSrc = url;
+        const onLoad = () => {
+          hideLoader();
+          player.dataset.state = 'ready';
+          player.removeEventListener('load', onLoad);
+        };
+        player.addEventListener('load', onLoad);
+        player.setAttribute('data', finalUrl);
+        window.setTimeout(hideLoader, 4000);
       }
 
       async function loadShorts() {
@@ -168,14 +200,19 @@
             throw new Error('Unable to resolve embed URL');
           }
 
-          player.setAttribute('data', embedUrl);
-          player.addEventListener('load', hideLoader, { once: true });
-          window.setTimeout(hideLoader, 4000);
+          playlistUrl = embedUrl;
+          applySource(playlistUrl);
         } catch (error) {
           console.error(error);
           hideLoader();
         }
       }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && playlistUrl) {
+          applySource(playlistUrl, { force: true });
+        }
+      });
 
       loadShorts();
     })();
