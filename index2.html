@@ -51,6 +51,14 @@
       pointer-events: none;
     }
 
+    .player-guard {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: transparent;
+      pointer-events: auto;
+    }
+
     .player-frame {
       width: 100%;
       height: 100%;
@@ -103,6 +111,7 @@
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share">
       <param name="allowfullscreen" value="true" />
     </object>
+    <div class="player-guard" aria-hidden="true"></div>
   </div>
 
   <script>
