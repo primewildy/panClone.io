@@ -217,8 +217,15 @@
         return DEFAULT_BACKGROUND;
       }
 
-      const rawShortsSource = resolveShortsLocation() || DEFAULT_SHORTS_SOURCE;
-      const SOURCE = toProxyUrl(rawShortsSource);
+      const rawShortsSource = resolveShortsLocation();
+      const candidateSources = [];
+      if (rawShortsSource) {
+        candidateSources.push(rawShortsSource);
+      }
+      if (!candidateSources.includes(DEFAULT_SHORTS_SOURCE)) {
+        candidateSources.push(DEFAULT_SHORTS_SOURCE);
+      }
+
       document.body.style.background = resolveBackgroundColor();
       const player = document.getElementById('shortsPlayer');
       const loader = document.getElementById('loadingIndicator');
@@ -280,40 +287,53 @@
         window.setTimeout(hideLoader, 4000);
       }
 
+      async function fetchShortIds(source) {
+        const proxyUrl = toProxyUrl(source);
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch shorts (${response.status})`);
+        }
+        const text = await response.text();
+        const ids = [];
+        const seen = new Set();
+
+        for (const match of text.matchAll(/https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/g)) {
+          const id = match[1];
+          if (!id || seen.has(id)) {
+            continue;
+          }
+          seen.add(id);
+          ids.push(id);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+
+        return ids;
+      }
+
       async function loadShorts() {
         try {
-          const response = await fetch(SOURCE);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch shorts (${response.status})`);
-          }
-
-          const text = await response.text();
-          const ids = [];
-          const seen = new Set();
-
-          for (const match of text.matchAll(/https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/g)) {
-            const id = match[1];
-            if (!id || seen.has(id)) {
-              continue;
-            }
-            seen.add(id);
-            ids.push(id);
-            if (ids.length >= 15) {
-              break;
+          for (const source of candidateSources) {
+            try {
+              const ids = await fetchShortIds(source);
+              if (!ids.length) {
+                continue;
+              }
+              const embedUrl = buildEmbedUrl(ids);
+              if (!embedUrl) {
+                continue;
+              }
+              playlistUrl = embedUrl;
+              player.dataset.shortsSource = source;
+              applySource(playlistUrl);
+              return;
+            } catch (sourceError) {
+              console.error(sourceError);
             }
           }
 
-          if (!ids.length) {
-            throw new Error('No shorts found');
-          }
-
-          const embedUrl = buildEmbedUrl(ids);
-          if (!embedUrl) {
-            throw new Error('Unable to resolve embed URL');
-          }
-
-          playlistUrl = embedUrl;
-          applySource(playlistUrl);
+          throw new Error('Unable to load shorts from any source');
         } catch (error) {
           console.error(error);
           hideLoader();
