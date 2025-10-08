@@ -218,13 +218,9 @@
       }
 
       const rawShortsSource = resolveShortsLocation();
-      const candidateSources = [];
-      if (rawShortsSource) {
-        candidateSources.push(rawShortsSource);
-      }
-      if (!candidateSources.includes(DEFAULT_SHORTS_SOURCE)) {
-        candidateSources.push(DEFAULT_SHORTS_SOURCE);
-      }
+      const candidateSources = rawShortsSource
+        ? [rawShortsSource]
+        : [DEFAULT_SHORTS_SOURCE];
 
       document.body.style.background = resolveBackgroundColor();
       const player = document.getElementById('shortsPlayer');
