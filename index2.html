@@ -116,76 +116,7 @@
 
   <script>
     (function () {
-      const PROXY_ORIGIN = 'https://r.jina.ai/';
-      const DEFAULT_SHORTS_SOURCE = 'https://www.youtube.com/@TheOfficialPandora/shorts';
-
-      function normalizeShortsLocation(value) {
-        if (typeof value !== 'string') {
-          return null;
-        }
-        let candidate = value.trim();
-        if (!candidate) {
-          return null;
-        }
-        if (!/^https?:\/\//i.test(candidate)) {
-          candidate = `https://${candidate}`;
-        }
-        try {
-          const url = new URL(candidate);
-          const hostname = url.hostname.toLowerCase();
-          const allowedHosts = new Set(['www.youtube.com', 'youtube.com', 'm.youtube.com']);
-          if (!allowedHosts.has(hostname)) {
-            return null;
-          }
-          if (!url.pathname.toLowerCase().includes('/shorts')) {
-            return null;
-          }
-          url.hash = '';
-          return url.toString();
-        } catch (error) {
-          return null;
-        }
-      }
-
-      function resolveShortsLocation() {
-        const params = new URLSearchParams(window.location.search);
-        const candidateKeys = ['shorts', 'source', 'src', 'channel', 'url'];
-        for (const key of candidateKeys) {
-          const normalized = normalizeShortsLocation(params.get(key));
-          if (normalized) {
-            return normalized;
-          }
-        }
-        if (window.location.search.length > 1) {
-          const rawQuery = window.location.search.slice(1);
-          const attempts = [rawQuery];
-          try {
-            attempts.unshift(decodeURIComponent(rawQuery));
-          } catch (error) {
-            // ignore decode issues and fall back to raw value
-          }
-          for (const attempt of attempts) {
-            const normalized = normalizeShortsLocation(attempt);
-            if (normalized) {
-              return normalized;
-            }
-          }
-        }
-        return DEFAULT_SHORTS_SOURCE;
-      }
-
-      function toProxyUrl(target) {
-        if (!target) {
-          return `${PROXY_ORIGIN}${DEFAULT_SHORTS_SOURCE}`;
-        }
-        if (target.startsWith(PROXY_ORIGIN)) {
-          return target;
-        }
-        return `${PROXY_ORIGIN}${target}`;
-      }
-
-      const rawShortsSource = resolveShortsLocation();
-      const SOURCE = toProxyUrl(rawShortsSource);
+      const SOURCE = 'https://r.jina.ai/https://www.youtube.com/@TheOfficialPandora/shorts';
       const player = document.getElementById('shortsPlayer');
       const loader = document.getElementById('loadingIndicator');
       let playlistUrl = '';
