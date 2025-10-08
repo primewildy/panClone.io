@@ -119,6 +119,14 @@
       const PROXY_ORIGIN = 'https://r.jina.ai/';
       const DEFAULT_SHORTS_SOURCE = 'https://www.youtube.com/@TheOfficialPandora/shorts';
       const DEFAULT_BACKGROUND = '#e1c5c9';
+      const params = new URLSearchParams(window.location.search);
+      const API_KEY = params.get('ytKey') || params.get('apikey') || params.get('key') || '';
+      const LOCAL_SHORTS_SOURCES = {
+        ee: {
+          dataPath: 'data/ee-shorts.json',
+          preferredBackground: '#057382',
+        },
+      };
 
       function normalizeShortsLocation(value) {
         if (typeof value !== 'string') {
@@ -148,31 +156,56 @@
         }
       }
 
-      function resolveShortsLocation() {
-        const params = new URLSearchParams(window.location.search);
+      function normalizeLocalAlias(value) {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        const candidate = value.trim().toLowerCase();
+        return candidate && Object.prototype.hasOwnProperty.call(LOCAL_SHORTS_SOURCES, candidate)
+          ? candidate
+          : null;
+      }
+
+      function resolveShortsConfig() {
+        const attempts = [];
         const candidateKeys = ['shorts', 'source', 'src', 'channel', 'url'];
         for (const key of candidateKeys) {
-          const normalized = normalizeShortsLocation(params.get(key));
-          if (normalized) {
-            return normalized;
+          const value = params.get(key);
+          if (value) {
+            attempts.push(value);
           }
         }
         if (window.location.search.length > 1) {
           const rawQuery = window.location.search.slice(1);
-          const attempts = [rawQuery];
+          attempts.push(rawQuery);
           try {
-            attempts.unshift(decodeURIComponent(rawQuery));
-          } catch (error) {
-            // ignore decode issues and fall back to raw value
-          }
-          for (const attempt of attempts) {
-            const normalized = normalizeShortsLocation(attempt);
-            if (normalized) {
-              return normalized;
+            const decoded = decodeURIComponent(rawQuery);
+            if (decoded !== rawQuery) {
+              attempts.push(decoded);
             }
+          } catch (error) {
+            // ignore malformed decoding attempts
           }
         }
-        return null;
+
+        for (const attempt of attempts) {
+          const alias = normalizeLocalAlias(attempt);
+          if (alias) {
+            const source = LOCAL_SHORTS_SOURCES[alias];
+            return {
+              type: 'local',
+              alias,
+              dataPath: source.dataPath,
+              preferredBackground: source.preferredBackground,
+            };
+          }
+          const normalized = normalizeShortsLocation(attempt);
+          if (normalized) {
+            return { type: 'remote', url: normalized };
+          }
+        }
+
+        return { type: 'remote', url: DEFAULT_SHORTS_SOURCE };
       }
 
       function toProxyUrl(target) {
@@ -199,8 +232,7 @@
           : null;
       }
 
-      function resolveBackgroundColor() {
-        const params = new URLSearchParams(window.location.search);
+      function resolveBackgroundColor(preferredColor) {
         const candidateKeys = ['bg', 'background', 'colour', 'color'];
         for (const key of candidateKeys) {
           const normalized = normalizeColor(params.get(key));
@@ -214,15 +246,117 @@
           return hashColor;
         }
 
+        if (preferredColor) {
+          const normalizedPreferred = normalizeColor(preferredColor);
+          if (normalizedPreferred) {
+            return normalizedPreferred;
+          }
+        }
+
         return DEFAULT_BACKGROUND;
       }
 
-      const rawShortsSource = resolveShortsLocation();
-      const candidateSources = rawShortsSource
-        ? [rawShortsSource]
-        : [DEFAULT_SHORTS_SOURCE];
+      const shortsConfig = resolveShortsConfig();
+      const localShortsConfig = shortsConfig.type === 'local' ? shortsConfig : null;
+      const candidateSources = shortsConfig.type === 'remote' ? [shortsConfig.url] : [];
 
-      document.body.style.background = resolveBackgroundColor();
+      const handlePattern = /^https?:\/\/(?:www\.)?youtube\.com\/(@[^/?]+)\/shorts/i;
+
+      function extractHandleCandidate(source) {
+        if (typeof source !== 'string') {
+          return null;
+        }
+        const match = source.match(handlePattern);
+        if (!match) {
+          return null;
+        }
+        const value = match[1];
+        if (!value) {
+          return null;
+        }
+        // Handles always start with @, hashes channels with # are unsupported here.
+        return value.startsWith('@') ? value : null;
+      }
+
+      async function fetchChannelIdForHandle(handle) {
+        if (!API_KEY) {
+          throw new Error('YouTube Data API key required to resolve handle');
+        }
+        const endpoint = new URL('https://www.googleapis.com/youtube/v3/search');
+        endpoint.searchParams.set('part', 'snippet');
+        endpoint.searchParams.set('type', 'channel');
+        endpoint.searchParams.set('q', handle);
+        endpoint.searchParams.set('maxResults', '5');
+        endpoint.searchParams.set('key', API_KEY);
+        const response = await fetch(endpoint.toString());
+        if (!response.ok) {
+          throw new Error(`Failed to resolve channel handle (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.items || !payload.items.length) {
+          throw new Error('Unable to resolve channel for handle');
+        }
+        const candidateIds = payload.items
+          .map((item) => item.snippet?.channelId)
+          .filter(Boolean);
+        if (!candidateIds.length) {
+          throw new Error('Resolved channel is missing channelId');
+        }
+        const channelsEndpoint = new URL('https://www.googleapis.com/youtube/v3/channels');
+        channelsEndpoint.searchParams.set('part', 'snippet');
+        channelsEndpoint.searchParams.set('id', candidateIds.join(','));
+        channelsEndpoint.searchParams.set('key', API_KEY);
+        const channelsResponse = await fetch(channelsEndpoint.toString());
+        if (!channelsResponse.ok) {
+          throw new Error(`Failed to fetch channel metadata (${channelsResponse.status})`);
+        }
+        const channelsPayload = await channelsResponse.json();
+        const normalizedHandle = handle.replace(/^@/, '').toLowerCase();
+        const exactChannel = channelsPayload.items?.find((item) => {
+          const customUrl = (item.snippet?.customUrl || '').replace(/^@/, '').toLowerCase();
+          return customUrl === normalizedHandle;
+        });
+        const chosenChannel = exactChannel || channelsPayload.items?.[0];
+        const channelId = chosenChannel?.id;
+        if (!channelId) {
+          throw new Error('Unable to determine channel id for handle');
+        }
+        return channelId;
+      }
+
+      async function fetchShortIdsFromDataApi(handle) {
+        const channelId = await fetchChannelIdForHandle(handle);
+        const endpoint = new URL('https://www.googleapis.com/youtube/v3/search');
+        endpoint.searchParams.set('part', 'id');
+        endpoint.searchParams.set('channelId', channelId);
+        endpoint.searchParams.set('maxResults', '25');
+        endpoint.searchParams.set('order', 'date');
+        endpoint.searchParams.set('type', 'video');
+        endpoint.searchParams.set('videoDuration', 'short');
+        endpoint.searchParams.set('key', API_KEY);
+        const response = await fetch(endpoint.toString());
+        if (!response.ok) {
+          throw new Error(`Failed to load shorts via Data API (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.items || !payload.items.length) {
+          throw new Error('No shorts returned from Data API');
+        }
+        const ids = [];
+        for (const item of payload.items) {
+          const videoId = item.id?.videoId;
+          if (!videoId || ids.includes(videoId)) {
+            continue;
+          }
+          ids.push(videoId);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+        return ids;
+      }
+
+      document.body.style.background = resolveBackgroundColor(localShortsConfig?.preferredBackground);
       const player = document.getElementById('shortsPlayer');
       const loader = document.getElementById('loadingIndicator');
       let playlistUrl = '';
@@ -283,7 +417,44 @@
         window.setTimeout(hideLoader, 4000);
       }
 
-      async function fetchShortIds(source) {
+      async function fetchShortIdsFromLocal(config) {
+        const response = await fetch(config.dataPath, { cache: 'no-cache' });
+        if (!response.ok) {
+          throw new Error(`Failed to load local shorts feed (${response.status})`);
+        }
+        const payload = await response.json();
+        const ids = [];
+        const seen = new Set();
+        for (const entry of Array.isArray(payload) ? payload : []) {
+          let videoId = null;
+          if (entry && typeof entry === 'object') {
+            if (typeof entry.id === 'string') {
+              videoId = entry.id;
+            } else if (typeof entry.url === 'string') {
+              const match = entry.url.match(/shorts\/([\w-]{11})/i);
+              if (match) {
+                videoId = match[1];
+              }
+            }
+          }
+          if (!videoId || seen.has(videoId)) {
+            continue;
+          }
+          seen.add(videoId);
+          ids.push(videoId);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+        return ids;
+      }
+
+      async function fetchShortIdsFromRemote(source) {
+        const handle = extractHandleCandidate(source);
+        if (handle && API_KEY) {
+          return fetchShortIdsFromDataApi(handle);
+        }
+
         const proxyUrl = toProxyUrl(source);
         const response = await fetch(proxyUrl);
         if (!response.ok) {
@@ -310,9 +481,24 @@
 
       async function loadShorts() {
         try {
+          if (localShortsConfig) {
+            const ids = await fetchShortIdsFromLocal(localShortsConfig);
+            if (!ids.length) {
+              throw new Error('No shorts found in local feed');
+            }
+            const embedUrl = buildEmbedUrl(ids);
+            if (!embedUrl) {
+              throw new Error('Unable to resolve embed URL from local feed');
+            }
+            playlistUrl = embedUrl;
+            player.dataset.shortsSource = localShortsConfig.alias;
+            applySource(playlistUrl);
+            return;
+          }
+
           for (const source of candidateSources) {
             try {
-              const ids = await fetchShortIds(source);
+              const ids = await fetchShortIdsFromRemote(source);
               if (!ids.length) {
                 continue;
               }
