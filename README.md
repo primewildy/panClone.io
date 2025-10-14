@@ -19,8 +19,8 @@ https://primewildy.github.io/panClone.io/index2
   - Accepts a YouTube channel shorts URL, e.g.
     `https://www.youtube.com/@TheOfficialPandora/shorts`.
   - Accepts custom feed aliases, e.g. `shorts=ee` uses the local
-    `data/ee-shorts.json` feed, while `shorts=marcopolo` resolves to the Marco
-    Polo channel.
+    `data/ee-shorts.json` feed, while `shorts=marcopolo` uses the local
+    `data/marcopolo-shorts.json` snapshot.
 - `bg` (alias: `background`, `colour`, `color`) sets the page background colour.
   - Accepts hex formats with or without `#` (`057382`, `#057382`, `FFF`).
   - When using a local feed alias the default background can be supplied by the
@@ -54,9 +54,9 @@ Local feeds live in `data/*.json` and contain arrays of shorts such as
 }
 ```
 
-When the `shorts` query resolves to a known alias the player either loads IDs
-from the corresponding JSON feed (e.g. `shorts=ee`) or rewrites to a predefined
-channel URL (e.g. `shorts=marcopolo`). Local feeds skip the proxy entirely. Up
+When the `shorts` query resolves to a known alias the player loads IDs
+from the corresponding JSON feed (e.g. `shorts=ee`, `shorts=marcopolo`) or
+rewrites to a predefined channel URL. Local feeds skip the proxy entirely. Up
 to fifteen IDs are used per session.
 
 ## Scraping Shorts Feeds
@@ -87,12 +87,14 @@ The script fails with a non-zero exit code when the page cannot be parsed or no
 shorts are discovered. Regenerate and commit the JSON whenever you want to refresh
 the feed served on GitHub Pages.
 
-## Updating EE Feed
+## Updating Local Feeds
 
 ```
 python scripts/fetch_shorts.py --handle @EEUK --output data/ee-shorts.json --limit 30
+python scripts/fetch_shorts.py --handle @marcopolo --output data/marcopolo-shorts.json --limit 30
 git add data/ee-shorts.json
-git commit -m "Update EE shorts feed"
+git add data/marcopolo-shorts.json
+git commit -m "Update local shorts feeds"
 git push
 ```
 
