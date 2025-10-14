@@ -19,7 +19,8 @@ https://primewildy.github.io/panClone.io/index2
   - Accepts a YouTube channel shorts URL, e.g.
     `https://www.youtube.com/@TheOfficialPandora/shorts`.
   - Accepts custom feed aliases, e.g. `shorts=ee` uses the local
-    `data/ee-shorts.json` feed.
+    `data/ee-shorts.json` feed, while `shorts=marcopolo` resolves to the Marco
+    Polo channel.
 - `bg` (alias: `background`, `colour`, `color`) sets the page background colour.
   - Accepts hex formats with or without `#` (`057382`, `#057382`, `FFF`).
   - When using a local feed alias the default background can be supplied by the
@@ -34,6 +35,8 @@ https://primewildy.github.io/panClone.io/index2
   `https://primewildy.github.io/panClone.io/index2`
 - Custom background:
   `https://primewildy.github.io/panClone.io/index2?bg=%23f0c4d5`
+- Marco Polo feed with brand background:
+  `https://primewildy.github.io/panClone.io/index2?shorts=marcopolo&bg=%230b1f2a`
 - EE shorts from local feed:
   `https://primewildy.github.io/panClone.io/index2?shorts=ee`
 - Remote channel with Data API fallback:
@@ -51,9 +54,10 @@ Local feeds live in `data/*.json` and contain arrays of shorts such as
 }
 ```
 
-When the `shorts` query resolves to a known alias (e.g. `ee`) the player loads
-IDs from the corresponding JSON and skips the proxy entirely. Up to fifteen IDs
-are used per session.
+When the `shorts` query resolves to a known alias the player either loads IDs
+from the corresponding JSON feed (e.g. `shorts=ee`) or rewrites to a predefined
+channel URL (e.g. `shorts=marcopolo`). Local feeds skip the proxy entirely. Up
+to fifteen IDs are used per session.
 
 ## Scraping Shorts Feeds
 

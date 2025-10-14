@@ -121,10 +121,21 @@
       const DEFAULT_BACKGROUND = '#e1c5c9';
       const params = new URLSearchParams(window.location.search);
       const API_KEY = params.get('ytKey') || params.get('apikey') || params.get('key') || '';
-      const LOCAL_SHORTS_SOURCES = {
+      const SHORTS_SOURCES = {
         ee: {
+          type: 'local',
           dataPath: 'data/ee-shorts.json',
           preferredBackground: '#057382',
+        },
+        pandora: {
+          type: 'remote',
+          url: 'https://www.youtube.com/@TheOfficialPandora/shorts',
+          preferredBackground: '#e1c5c9',
+        },
+        marcopolo: {
+          type: 'remote',
+          url: 'https://www.youtube.com/@marcopolo/shorts',
+          preferredBackground: '#0b1f2a',
         },
       };
 
@@ -156,14 +167,22 @@
         }
       }
 
-      function normalizeLocalAlias(value) {
+      function resolveAliasConfig(value) {
         if (typeof value !== 'string') {
           return null;
         }
         const candidate = value.trim().toLowerCase();
-        return candidate && Object.prototype.hasOwnProperty.call(LOCAL_SHORTS_SOURCES, candidate)
-          ? candidate
-          : null;
+        if (!candidate) {
+          return null;
+        }
+        if (!Object.prototype.hasOwnProperty.call(SHORTS_SOURCES, candidate)) {
+          return null;
+        }
+        const source = SHORTS_SOURCES[candidate];
+        if (!source || typeof source !== 'object') {
+          return null;
+        }
+        return { alias: candidate, ...source };
       }
 
       function resolveShortsConfig() {
@@ -189,23 +208,44 @@
         }
 
         for (const attempt of attempts) {
-          const alias = normalizeLocalAlias(attempt);
-          if (alias) {
-            const source = LOCAL_SHORTS_SOURCES[alias];
-            return {
-              type: 'local',
-              alias,
-              dataPath: source.dataPath,
-              preferredBackground: source.preferredBackground,
-            };
+          const aliasConfig = resolveAliasConfig(attempt);
+          if (aliasConfig) {
+            if (aliasConfig.type === 'local' && aliasConfig.dataPath) {
+              return {
+                type: 'local',
+                alias: aliasConfig.alias,
+                dataPath: aliasConfig.dataPath,
+                preferredBackground: aliasConfig.preferredBackground,
+              };
+            }
+            if (aliasConfig.type === 'remote' && aliasConfig.url) {
+              const normalizedUrl = normalizeShortsLocation(aliasConfig.url);
+              if (normalizedUrl) {
+                return {
+                  type: 'remote',
+                  alias: aliasConfig.alias,
+                  url: normalizedUrl,
+                  preferredBackground: aliasConfig.preferredBackground,
+                };
+              }
+            }
           }
           const normalized = normalizeShortsLocation(attempt);
           if (normalized) {
-            return { type: 'remote', url: normalized };
+            return {
+              type: 'remote',
+              url: normalized,
+              preferredBackground: null,
+            };
           }
         }
 
-        return { type: 'remote', url: DEFAULT_SHORTS_SOURCE };
+        return {
+          type: 'remote',
+          alias: 'pandora',
+          url: DEFAULT_SHORTS_SOURCE,
+          preferredBackground: SHORTS_SOURCES.pandora?.preferredBackground || null,
+        };
       }
 
       function toProxyUrl(target) {
@@ -258,7 +298,8 @@
 
       const shortsConfig = resolveShortsConfig();
       const localShortsConfig = shortsConfig.type === 'local' ? shortsConfig : null;
-      const candidateSources = shortsConfig.type === 'remote' ? [shortsConfig.url] : [];
+      const remoteShortsConfig = shortsConfig.type === 'remote' ? shortsConfig : null;
+      const candidateSources = remoteShortsConfig?.url ? [remoteShortsConfig.url] : [];
 
       const handlePattern = /^https?:\/\/(?:www\.)?youtube\.com\/(@[^/?]+)\/shorts/i;
 
@@ -356,7 +397,7 @@
         return ids;
       }
 
-      document.body.style.background = resolveBackgroundColor(localShortsConfig?.preferredBackground);
+      document.body.style.background = resolveBackgroundColor(shortsConfig.preferredBackground);
       const player = document.getElementById('shortsPlayer');
       const loader = document.getElementById('loadingIndicator');
       let playlistUrl = '';
@@ -507,7 +548,7 @@
                 continue;
               }
               playlistUrl = embedUrl;
-              player.dataset.shortsSource = source;
+              player.dataset.shortsSource = remoteShortsConfig?.alias || source;
               applySource(playlistUrl);
               return;
             } catch (sourceError) {
