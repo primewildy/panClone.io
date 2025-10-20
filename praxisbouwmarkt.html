@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shorts Loop</title>
+  <meta name="description" content="Continuous loop of Pandora YouTube Shorts." />
+  <style>
+    :root {
+      color-scheme: light;
+      --rose: #f7f0f7;
+      --rose-soft: #fdf7fb;
+      --shadow: rgba(0, 0, 0, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #565C58;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    .player-shell {
+      width: min(520px, 90vw);
+      aspect-ratio: 9 / 16;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: 0 32px 70px var(--shadow);
+      background: #000;
+      position: relative;
+    }
+
+    .player-shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.02);
+      pointer-events: none;
+    }
+
+    .player-guard {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    .player-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .loading::after {
+      content: "";
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 3px solid rgba(214, 129, 163, 0.25);
+      border-top-color: rgba(179, 87, 132, 0.9);
+      animation: spin 1s linear infinite;
+    }
+
+    .loading.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 280ms ease;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loadingIndicator" aria-hidden="true"></div>
+  <div class="player-shell">
+    <object
+      id="shortsPlayer"
+      class="player-frame"
+      type="text/html"
+      data=""
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share">
+      <param name="allowfullscreen" value="true" />
+    </object>
+    <div class="player-guard" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    (function () {
+      const PROXY_ORIGIN = 'https://r.jina.ai/';
+      const DEFAULT_SHORTS_SOURCE = 'https://www.youtube.com/@praxisbouwmarkt_brand6693/shorts';
+      const DEFAULT_BACKGROUND = '#565C58';
+      const params = new URLSearchParams(window.location.search);
+      const API_KEY = params.get('ytKey') || params.get('apikey') || params.get('key') || '';
+      const SHORTS_SOURCES = {
+        ee: {
+          type: 'local',
+          dataPath: 'data/ee-shorts.json',
+          preferredBackground: '#057382',
+        },
+        pandora: {
+          type: 'remote',
+          url: 'https://www.youtube.com/@TheOfficialPandora/shorts',
+          preferredBackground: '#e1c5c9',
+        },
+        praxisbouwmarkt: {
+          type: 'remote',
+          url: 'https://www.youtube.com/@praxisbouwmarkt_brand6693/shorts',
+          preferredBackground: '#565C58',
+        },
+        marcopolo: {
+          type: 'local',
+          dataPath: 'data/marcopolo-shorts.json',
+          preferredBackground: '#0b1f2a',
+        },
+      };
+
+      function normalizeShortsLocation(value) {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        let candidate = value.trim();
+        if (!candidate) {
+          return null;
+        }
+        if (!/^https?:\/\//i.test(candidate)) {
+          candidate = `https://${candidate}`;
+        }
+        try {
+          const url = new URL(candidate);
+          const hostname = url.hostname.toLowerCase();
+          const allowedHosts = new Set(['www.youtube.com', 'youtube.com', 'm.youtube.com']);
+          if (!allowedHosts.has(hostname)) {
+            return null;
+          }
+          if (!url.pathname.toLowerCase().includes('/shorts')) {
+            return null;
+          }
+          url.hash = '';
+          return url.toString();
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function resolveAliasConfig(value) {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        const candidate = value.trim().toLowerCase();
+        if (!candidate) {
+          return null;
+        }
+        if (!Object.prototype.hasOwnProperty.call(SHORTS_SOURCES, candidate)) {
+          return null;
+        }
+        const source = SHORTS_SOURCES[candidate];
+        if (!source || typeof source !== 'object') {
+          return null;
+        }
+        return { alias: candidate, ...source };
+      }
+
+      function resolveShortsConfig() {
+        const attempts = [];
+        const candidateKeys = ['shorts', 'source', 'src', 'channel', 'url'];
+        for (const key of candidateKeys) {
+          const value = params.get(key);
+          if (value) {
+            attempts.push(value);
+          }
+        }
+        if (window.location.search.length > 1) {
+          const rawQuery = window.location.search.slice(1);
+          attempts.push(rawQuery);
+          try {
+            const decoded = decodeURIComponent(rawQuery);
+            if (decoded !== rawQuery) {
+              attempts.push(decoded);
+            }
+          } catch (error) {
+            // ignore malformed decoding attempts
+          }
+        }
+
+        for (const attempt of attempts) {
+          const aliasConfig = resolveAliasConfig(attempt);
+          if (aliasConfig) {
+            if (aliasConfig.type === 'local' && aliasConfig.dataPath) {
+              return {
+                type: 'local',
+                alias: aliasConfig.alias,
+                dataPath: aliasConfig.dataPath,
+                preferredBackground: aliasConfig.preferredBackground,
+              };
+            }
+            if (aliasConfig.type === 'remote' && aliasConfig.url) {
+              const normalizedUrl = normalizeShortsLocation(aliasConfig.url);
+              if (normalizedUrl) {
+                return {
+                  type: 'remote',
+                  alias: aliasConfig.alias,
+                  url: normalizedUrl,
+                  preferredBackground: aliasConfig.preferredBackground,
+                };
+              }
+            }
+          }
+          const normalized = normalizeShortsLocation(attempt);
+          if (normalized) {
+            return {
+              type: 'remote',
+              url: normalized,
+              preferredBackground: null,
+            };
+          }
+        }
+
+        return {
+          type: 'remote',
+          alias: 'praxisbouwmarkt',
+          url: DEFAULT_SHORTS_SOURCE,
+          preferredBackground: SHORTS_SOURCES.praxisbouwmarkt?.preferredBackground || null,
+        };
+      }
+
+      function toProxyUrl(target) {
+        if (!target) {
+          return `${PROXY_ORIGIN}${DEFAULT_SHORTS_SOURCE}`;
+        }
+        if (target.startsWith(PROXY_ORIGIN)) {
+          return target;
+        }
+        return `${PROXY_ORIGIN}${target}`;
+      }
+
+      function normalizeColor(value) {
+        if (typeof value !== 'string') {
+          return null;
+        }
+        const candidate = value.trim();
+        if (!candidate) {
+          return null;
+        }
+        const prefixed = candidate.startsWith('#') ? candidate : `#${candidate}`;
+        return /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(prefixed)
+          ? prefixed
+          : null;
+      }
+
+      function resolveBackgroundColor(preferredColor) {
+        const candidateKeys = ['bg', 'background', 'colour', 'color'];
+        for (const key of candidateKeys) {
+          const normalized = normalizeColor(params.get(key));
+          if (normalized) {
+            return normalized;
+          }
+        }
+
+        const hashColor = normalizeColor(window.location.hash.slice(1));
+        if (hashColor) {
+          return hashColor;
+        }
+
+        if (preferredColor) {
+          const normalizedPreferred = normalizeColor(preferredColor);
+          if (normalizedPreferred) {
+            return normalizedPreferred;
+          }
+        }
+
+        return DEFAULT_BACKGROUND;
+      }
+
+      const shortsConfig = resolveShortsConfig();
+      const localShortsConfig = shortsConfig.type === 'local' ? shortsConfig : null;
+      const remoteShortsConfig = shortsConfig.type === 'remote' ? shortsConfig : null;
+      const candidateSources = remoteShortsConfig?.url ? [remoteShortsConfig.url] : [];
+
+      const handlePattern = /^https?:\/\/(?:www\.)?youtube\.com\/(@[^/?]+)\/shorts/i;
+
+      function extractHandleCandidate(source) {
+        if (typeof source !== 'string') {
+          return null;
+        }
+        const match = source.match(handlePattern);
+        if (!match) {
+          return null;
+        }
+        const value = match[1];
+        if (!value) {
+          return null;
+        }
+        // Handles always start with @, hashes channels with # are unsupported here.
+        return value.startsWith('@') ? value : null;
+      }
+
+      async function fetchChannelIdForHandle(handle) {
+        if (!API_KEY) {
+          throw new Error('YouTube Data API key required to resolve handle');
+        }
+        const endpoint = new URL('https://www.googleapis.com/youtube/v3/search');
+        endpoint.searchParams.set('part', 'snippet');
+        endpoint.searchParams.set('type', 'channel');
+        endpoint.searchParams.set('q', handle);
+        endpoint.searchParams.set('maxResults', '5');
+        endpoint.searchParams.set('key', API_KEY);
+        const response = await fetch(endpoint.toString());
+        if (!response.ok) {
+          throw new Error(`Failed to resolve channel handle (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.items || !payload.items.length) {
+          throw new Error('Unable to resolve channel for handle');
+        }
+        const candidateIds = payload.items
+          .map((item) => item.snippet?.channelId)
+          .filter(Boolean);
+        if (!candidateIds.length) {
+          throw new Error('Resolved channel is missing channelId');
+        }
+        const channelsEndpoint = new URL('https://www.googleapis.com/youtube/v3/channels');
+        channelsEndpoint.searchParams.set('part', 'snippet');
+        channelsEndpoint.searchParams.set('id', candidateIds.join(','));
+        channelsEndpoint.searchParams.set('key', API_KEY);
+        const channelsResponse = await fetch(channelsEndpoint.toString());
+        if (!channelsResponse.ok) {
+          throw new Error(`Failed to fetch channel metadata (${channelsResponse.status})`);
+        }
+        const channelsPayload = await channelsResponse.json();
+        const normalizedHandle = handle.replace(/^@/, '').toLowerCase();
+        const exactChannel = channelsPayload.items?.find((item) => {
+          const customUrl = (item.snippet?.customUrl || '').replace(/^@/, '').toLowerCase();
+          return customUrl === normalizedHandle;
+        });
+        const chosenChannel = exactChannel || channelsPayload.items?.[0];
+        const channelId = chosenChannel?.id;
+        if (!channelId) {
+          throw new Error('Unable to determine channel id for handle');
+        }
+        return channelId;
+      }
+
+      async function fetchShortIdsFromDataApi(handle) {
+        const channelId = await fetchChannelIdForHandle(handle);
+        const endpoint = new URL('https://www.googleapis.com/youtube/v3/search');
+        endpoint.searchParams.set('part', 'id');
+        endpoint.searchParams.set('channelId', channelId);
+        endpoint.searchParams.set('maxResults', '25');
+        endpoint.searchParams.set('order', 'date');
+        endpoint.searchParams.set('type', 'video');
+        endpoint.searchParams.set('videoDuration', 'short');
+        endpoint.searchParams.set('key', API_KEY);
+        const response = await fetch(endpoint.toString());
+        if (!response.ok) {
+          throw new Error(`Failed to load shorts via Data API (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.items || !payload.items.length) {
+          throw new Error('No shorts returned from Data API');
+        }
+        const ids = [];
+        for (const item of payload.items) {
+          const videoId = item.id?.videoId;
+          if (!videoId || ids.includes(videoId)) {
+            continue;
+          }
+          ids.push(videoId);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+        return ids;
+      }
+
+      document.body.style.background = resolveBackgroundColor(shortsConfig.preferredBackground);
+      const player = document.getElementById('shortsPlayer');
+      const loader = document.getElementById('loadingIndicator');
+      let playlistUrl = '';
+
+      function hideLoader() {
+        loader.classList.add('is-hidden');
+      }
+
+      function showLoader() {
+        loader.classList.remove('is-hidden');
+      }
+
+      function buildEmbedUrl(ids) {
+        if (!ids.length) {
+          return '';
+        }
+        const [first, ...rest] = ids;
+        const params = new URLSearchParams({
+          autoplay: '1',
+          playsinline: '1',
+          rel: '0',
+          modestbranding: '1',
+          controls: '0',
+          enablejsapi: '1',
+          mute: '1',
+        });
+        const playlistIds = rest.length ? ids : [first];
+        params.set('playlist', playlistIds.join(','));
+        params.set('loop', '1');
+        params.set('origin', window.location.origin);
+        return `https://www.youtube.com/embed/${first}?${params.toString()}`;
+      }
+
+      function withReloadParam(url) {
+        try {
+          const parsed = new URL(url);
+          parsed.searchParams.set('reload', Date.now().toString(36));
+          return parsed.toString();
+        } catch (error) {
+          return url;
+        }
+      }
+
+      function applySource(url, options = {}) {
+        if (!url) return;
+        const { force = false } = options;
+        const finalUrl = force ? withReloadParam(url) : url;
+        showLoader();
+        player.dataset.state = 'loading';
+        player.dataset.currentSrc = url;
+        const onLoad = () => {
+          hideLoader();
+          player.dataset.state = 'ready';
+          player.removeEventListener('load', onLoad);
+        };
+        player.addEventListener('load', onLoad);
+        player.setAttribute('data', finalUrl);
+        window.setTimeout(hideLoader, 4000);
+      }
+
+      async function fetchShortIdsFromLocal(config) {
+        const response = await fetch(config.dataPath, { cache: 'no-cache' });
+        if (!response.ok) {
+          throw new Error(`Failed to load local shorts feed (${response.status})`);
+        }
+        const payload = await response.json();
+        const ids = [];
+        const seen = new Set();
+        for (const entry of Array.isArray(payload) ? payload : []) {
+          let videoId = null;
+          if (entry && typeof entry === 'object') {
+            if (typeof entry.id === 'string') {
+              videoId = entry.id;
+            } else if (typeof entry.url === 'string') {
+              const match = entry.url.match(/shorts\/([\w-]{11})/i);
+              if (match) {
+                videoId = match[1];
+              }
+            }
+          }
+          if (!videoId || seen.has(videoId)) {
+            continue;
+          }
+          seen.add(videoId);
+          ids.push(videoId);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+        return ids;
+      }
+
+      async function fetchShortIdsFromRemote(source) {
+        const handle = extractHandleCandidate(source);
+        if (handle && API_KEY) {
+          return fetchShortIdsFromDataApi(handle);
+        }
+
+        const proxyUrl = toProxyUrl(source);
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch shorts (${response.status})`);
+        }
+        const text = await response.text();
+        const ids = [];
+        const seen = new Set();
+
+        for (const match of text.matchAll(/https:\/\/www\.youtube\.com\/shorts\/([\w-]+)/g)) {
+          const id = match[1];
+          if (!id || seen.has(id)) {
+            continue;
+          }
+          seen.add(id);
+          ids.push(id);
+          if (ids.length >= 15) {
+            break;
+          }
+        }
+
+        return ids;
+      }
+
+      async function loadShorts() {
+        try {
+          if (localShortsConfig) {
+            const ids = await fetchShortIdsFromLocal(localShortsConfig);
+            if (!ids.length) {
+              throw new Error('No shorts found in local feed');
+            }
+            const embedUrl = buildEmbedUrl(ids);
+            if (!embedUrl) {
+              throw new Error('Unable to resolve embed URL from local feed');
+            }
+            playlistUrl = embedUrl;
+            player.dataset.shortsSource = localShortsConfig.alias;
+            applySource(playlistUrl);
+            return;
+          }
+
+          for (const source of candidateSources) {
+            try {
+              const ids = await fetchShortIdsFromRemote(source);
+              if (!ids.length) {
+                continue;
+              }
+              const embedUrl = buildEmbedUrl(ids);
+              if (!embedUrl) {
+                continue;
+              }
+              playlistUrl = embedUrl;
+              player.dataset.shortsSource = remoteShortsConfig?.alias || source;
+              applySource(playlistUrl);
+              return;
+            } catch (sourceError) {
+              console.error(sourceError);
+            }
+          }
+
+          throw new Error('Unable to load shorts from any source');
+        } catch (error) {
+          console.error(error);
+          hideLoader();
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && playlistUrl) {
+          applySource(playlistUrl, { force: true });
+        }
+      });
+
+      loadShorts();
+    })();
+  </script>
+</body>
+</html>
