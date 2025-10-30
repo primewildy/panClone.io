@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enactor Video Loop</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2.5rem;
+      padding: 3rem 1.5rem 4rem;
+      background: #222B33;
+      color: #f3f7fb;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.25rem, 5vw, 3.5rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    p.subtitle {
+      margin: 0;
+      max-width: 640px;
+      line-height: 1.6;
+      color: rgba(243, 247, 251, 0.75);
+      font-size: 1.05rem;
+    }
+
+    .player-shell {
+      width: min(960px, 92vw);
+      aspect-ratio: 16 / 9;
+      border-radius: 30px;
+      overflow: hidden;
+      position: relative;
+      background: #121a23;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+    }
+
+    .player-shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 40%);
+      pointer-events: none;
+    }
+
+    .player-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .status-banner {
+      min-height: 3.5rem;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(9, 16, 24, 0.55);
+      color: rgba(243, 247, 251, 0.78);
+      font-size: 1rem;
+      letter-spacing: 0.018em;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .loading::after {
+      content: "";
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      border: 4px solid rgba(119, 190, 255, 0.18);
+      border-top-color: rgba(176, 223, 255, 0.92);
+      animation: spin 1s linear infinite;
+    }
+
+    .loading.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 220ms ease;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Enactor Highlights</h1>
+    <p class="subtitle">Continuous loop of Enactor stories and walkthroughs. Drop fresh clips into the JSON feed and they appear here automatically.</p>
+  </header>
+
+  <div class="player-shell">
+    <object
+      id="enactorPlayer"
+      class="player-frame"
+      type="text/html"
+      data=""
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share">
+      <param name="allowfullscreen" value="true" />
+    </object>
+  </div>
+
+  <div id="statusMessage" class="status-banner" role="status">Loading playlist…</div>
+  <div id="loadingIndicator" class="loading" aria-hidden="true"></div>
+
+  <script>
+    (function applyGhPathPatch() {
+      var host = window.location.host;
+      var pathParts = window.location.pathname.split('/').filter(Boolean);
+      var basePath = '/';
+      if (host.endsWith('github.io') && pathParts.length > 0) {
+        basePath = '/' + pathParts[0] + '/';
+      }
+      function rewrite(url) {
+        if (typeof url === 'string' && url.charAt(0) === '/' && !url.startsWith('//')) {
+          if (basePath !== '/' && !url.startsWith(basePath)) {
+            return basePath + url.slice(1);
+          }
+        }
+        return url;
+      }
+      var origFetch = window.fetch;
+      if (origFetch) {
+        window.fetch = function (input, init) {
+          if (typeof input === 'string') {
+            input = rewrite(input);
+          } else if (input && typeof input.url === 'string') {
+            var newUrl = rewrite(input.url);
+            if (newUrl !== input.url) {
+              input = new Request(newUrl, input);
+            }
+          }
+          return origFetch.call(this, input, init);
+        };
+      }
+      if (window.XMLHttpRequest) {
+        var origOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          if (typeof url === 'string') {
+            arguments[1] = rewrite(url);
+          }
+          return origOpen.apply(this, arguments);
+        };
+      }
+    })();
+
+    (function initPlayer() {
+      var DATA_URL = '../../data/enactor-videos.json';
+      var player = document.getElementById('enactorPlayer');
+      var statusEl = document.getElementById('statusMessage');
+      var loader = document.getElementById('loadingIndicator');
+      var currentUrl = '';
+
+      function showLoader() {
+        loader.classList.remove('is-hidden');
+      }
+
+      function hideLoader() {
+        loader.classList.add('is-hidden');
+      }
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.style.color = isError ? '#ffb4b4' : 'rgba(243, 247, 251, 0.78)';
+      }
+
+      function extractYouTubeId(entry) {
+        if (!entry) return null;
+        if (typeof entry.youtubeId === 'string' && entry.youtubeId.trim()) {
+          return entry.youtubeId.trim();
+        }
+        if (typeof entry.url === 'string' && entry.url.trim()) {
+          var url = entry.url.trim();
+          var directMatch = url.match(/(?:youtu\.be\/|embed\/|v=)([\w-]{11})/);
+          if (directMatch) {
+            return directMatch[1];
+          }
+          try {
+            var parsed = new URL(url);
+            var id = parsed.searchParams.get('v');
+            if (id && /^[\w-]{11}$/.test(id)) {
+              return id;
+            }
+          } catch (error) {
+            // ignore parsing issues
+          }
+        }
+        return null;
+      }
+
+      function buildEmbedUrl(ids) {
+        if (!ids.length) {
+          return '';
+        }
+        var first = ids[0];
+        var params = new URLSearchParams({
+          autoplay: '1',
+          controls: '0',
+          rel: '0',
+          modestbranding: '1',
+          mute: '1',
+          playsinline: '1'
+        });
+        params.set('loop', '1');
+        params.set('playlist', ids.length > 1 ? ids.join(',') : first);
+        params.set('origin', window.location.origin);
+        return 'https://www.youtube.com/embed/' + first + '?' + params.toString();
+      }
+
+      function withReloadParam(url) {
+        try {
+          var parsed = new URL(url);
+          parsed.searchParams.set('reload', Date.now().toString(36));
+          return parsed.toString();
+        } catch (error) {
+          return url;
+        }
+      }
+
+      function applySource(url, options) {
+        if (!url) {
+          return;
+        }
+        var force = options && options.force;
+        var targetUrl = force ? withReloadParam(url) : url;
+        showLoader();
+        player.dataset.state = 'loading';
+        var onLoad = function () {
+          player.removeEventListener('load', onLoad);
+          player.dataset.state = 'ready';
+          hideLoader();
+          setStatus('Playing Enactor playlist', false);
+        };
+        player.addEventListener('load', onLoad);
+        player.setAttribute('data', targetUrl);
+        currentUrl = url;
+        window.setTimeout(hideLoader, 4000);
+      }
+
+      function normaliseEntries(items) {
+        var ids = [];
+        var seen = new Set();
+        for (var i = 0; i < items.length; i++) {
+          var id = extractYouTubeId(items[i]);
+          if (!id || seen.has(id)) {
+            continue;
+          }
+          seen.add(id);
+          ids.push(id);
+          if (ids.length >= 25) {
+            break;
+          }
+        }
+        return ids;
+      }
+
+      async function loadPlaylist() {
+        showLoader();
+        try {
+          var response = await fetch(DATA_URL, { cache: 'no-cache' });
+          if (!response.ok) {
+            throw new Error('Unable to fetch video feed (' + response.status + ')');
+          }
+          var payload = await response.json();
+          var entries = Array.isArray(payload) ? payload : [];
+          var ids = normaliseEntries(entries);
+          if (!ids.length) {
+            throw new Error('No valid videos in the feed yet.');
+          }
+          var embedUrl = buildEmbedUrl(ids);
+          if (!embedUrl) {
+            throw new Error('Unable to build playlist URL.');
+          }
+          applySource(embedUrl);
+        } catch (error) {
+          console.error(error);
+          hideLoader();
+          setStatus(error && error.message ? error.message : 'Unable to load playlist.', true);
+        }
+      }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible' && currentUrl) {
+          applySource(currentUrl, { force: true });
+        }
+      });
+
+      loadPlaylist();
+    })();
+  </script>
+</body>
+</html>
