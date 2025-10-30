@@ -20,27 +20,9 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 2.5rem;
-      padding: 3rem 1.5rem 4rem;
+      gap: 0;
+      padding: 3rem 1.5rem;
       background: #222B33;
-      color: #f3f7fb;
-      font-family: "Helvetica Neue", Arial, sans-serif;
-      text-align: center;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2.25rem, 5vw, 3.5rem);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    p.subtitle {
-      margin: 0;
-      max-width: 640px;
-      line-height: 1.6;
-      color: rgba(243, 247, 251, 0.75);
-      font-size: 1.05rem;
     }
 
     .player-shell {
@@ -68,17 +50,6 @@
       height: 100%;
       border: 0;
       display: block;
-    }
-
-    .status-banner {
-      min-height: 3.5rem;
-      padding: 1rem 1.5rem;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(9, 16, 24, 0.55);
-      color: rgba(243, 247, 251, 0.78);
-      font-size: 1rem;
-      letter-spacing: 0.018em;
     }
 
     .loading {
@@ -115,11 +86,6 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>Enactor Highlights</h1>
-    <p class="subtitle">Continuous loop of Enactor stories and walkthroughs. Drop fresh clips into the JSON feed and they appear here automatically.</p>
-  </header>
-
   <div class="player-shell">
     <object
       id="enactorPlayer"
@@ -131,7 +97,6 @@
     </object>
   </div>
 
-  <div id="statusMessage" class="status-banner" role="status">Loading playlist…</div>
   <div id="loadingIndicator" class="loading" aria-hidden="true"></div>
 
   <script>
@@ -178,7 +143,6 @@
     (function initPlayer() {
       var DATA_URL = '../../data/enactor-videos.json';
       var player = document.getElementById('enactorPlayer');
-      var statusEl = document.getElementById('statusMessage');
       var loader = document.getElementById('loadingIndicator');
       var currentUrl = '';
 
@@ -188,11 +152,6 @@
 
       function hideLoader() {
         loader.classList.add('is-hidden');
-      }
-
-      function setStatus(message, isError) {
-        statusEl.textContent = message;
-        statusEl.style.color = isError ? '#ffb4b4' : 'rgba(243, 247, 251, 0.78)';
       }
 
       function extractYouTubeId(entry) {
@@ -260,7 +219,6 @@
           player.removeEventListener('load', onLoad);
           player.dataset.state = 'ready';
           hideLoader();
-          setStatus('Playing Enactor playlist', false);
         };
         player.addEventListener('load', onLoad);
         player.setAttribute('data', targetUrl);
@@ -306,7 +264,6 @@
         } catch (error) {
           console.error(error);
           hideLoader();
-          setStatus(error && error.message ? error.message : 'Unable to load playlist.', true);
         }
       }
 
